@@ -5,9 +5,16 @@ import { AppShell } from "@/components/AppShell";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
-  title: "Ledger — local-first bookkeeping",
+  title: "KwikBookz — local-first bookkeeping",
   description: "Import, categorize, reconcile, and report on your business finances — entirely offline.",
   manifest: "/manifest.json",
+  metadataBase: new URL("https://kwikbookz.com"),
+  openGraph: {
+    title: "KwikBookz",
+    description: "Fast, local-first bookkeeping for small businesses.",
+    url: "https://kwikbookz.com",
+    siteName: "KwikBookz",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -52,7 +52,7 @@ export async function createBackupZip(): Promise<Blob> {
     ]);
 
   const zip = new JSZip();
-  const root = zip.folder("bookkeeping-backup")!;
+  const root = zip.folder("kwikbookz-backup")!;
 
   root.file(
     "database.json",
@@ -163,7 +163,7 @@ export async function downloadBackup(): Promise<void> {
   const a = document.createElement("a");
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   a.href = url;
-  a.download = `bookkeeping-backup-${stamp}.zip`;
+  a.download = `kwikbookz-backup-${stamp}.zip`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -183,7 +183,7 @@ export interface RestoreResult {
 export async function restoreBackupZip(file: File, mode: "replace" | "merge" = "replace"): Promise<RestoreResult> {
   try {
     const zip = await JSZip.loadAsync(file);
-    const root = zip.folder("bookkeeping-backup") ?? zip;
+    const root = zip.folder("kwikbookz-backup") ?? zip;
     const dbFile = root.file("database.json");
     if (!dbFile) {
       return { ok: false, error: "This file doesn't look like a valid backup (missing database.json)." };

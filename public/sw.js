@@ -1,4 +1,4 @@
-const CACHE_NAME = "ledger-shell-v1";
+const CACHE_NAME = "kwikbookz-shell-v1";
 const SHELL_URLS = ["/", "/manifest.json"];
 
 self.addEventListener("install", (event) => {

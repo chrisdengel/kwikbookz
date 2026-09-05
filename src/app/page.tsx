@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, Badge } from "@/components/ui
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { accountBalance } from "@/lib/reports";
-import { Upload, PlusCircle, Scale, DownloadCloud } from "lucide-react";
+import { Upload, PlusCircle, Scale, DownloadCloud, HelpCircle } from "lucide-react";
 import { downloadBackup } from "@/lib/backup";
 
 export default function DashboardPage() {
@@ -61,6 +61,7 @@ export default function DashboardPage() {
         <Button variant="outline" onClick={handleBackup} disabled={backingUp}>
           <DownloadCloud size={15} /> {backingUp ? "Backing up…" : "Backup Now"}
         </Button>
+        <Link href="/help"><Button variant="ghost"><HelpCircle size={15} /> How to use this site</Button></Link>
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3">

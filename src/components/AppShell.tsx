@@ -24,6 +24,7 @@ import {
   ListChecks,
   Tags,
   Settings as SettingsIcon,
+  HelpCircle,
   Search,
   DownloadCloud,
   UploadCloud,
@@ -47,6 +48,7 @@ const NAV_BOTTOM = [
   { href: "/categories", label: "Categories", icon: Tags },
   { href: "/rules", label: "Rules", icon: ListChecks },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
+  { href: "/help", label: "Help", icon: HelpCircle },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

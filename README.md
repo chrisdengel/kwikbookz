@@ -1,6 +1,6 @@
-# Ledger — local-first bookkeeping
+# KwikBookz — local-first bookkeeping
 
-A simple, fast, local-first bookkeeping app for a small-business owner who
+kwikbookz.com is a simple, fast, local-first bookkeeping app for a small-business owner who
 finds QuickBooks unnecessarily complicated. Import bank statements,
 auto-organize transactions with deterministic rules, reconcile accounts,
 attach receipts, and produce reports — all running entirely in the browser

@@ -97,9 +97,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900">
       <aside className="flex w-56 shrink-0 flex-col border-r border-slate-200 bg-white">
-        <div className="px-4 py-4">
-          <div className="text-lg font-semibold tracking-tight">Ledger</div>
-          <div className="text-xs text-slate-400">local-first bookkeeping</div>
+        <div className="flex items-center gap-2 px-4 py-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand-mark.png" alt="KwikBookz" className="h-8 w-8 rounded-lg" />
+          <div>
+            <div className="text-lg font-semibold tracking-tight">
+              Kwik<span className="text-emerald-600">Bookz</span>
+            </div>
+            <div className="text-[11px] text-slate-400">kwikbookz.com</div>
+          </div>
         </div>
         <nav className="flex-1 space-y-0.5 px-2">
           {NAV.map((item) => {

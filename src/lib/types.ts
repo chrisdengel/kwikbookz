@@ -28,6 +28,7 @@ export interface Account {
   institution?: string;
   type: AccountType;
   lastFour?: string;
+  code?: string; // optional GL account number, e.g. "1010" — for a chart of accounts
   openingBalance: number;
   active: boolean;
   createdAt: string;
@@ -38,6 +39,7 @@ export interface Category {
   name: string;
   group: "Income" | "Operating Expenses" | "Property/Equipment" | "Financial" | "Custom";
   custom: boolean;
+  code?: string; // optional GL account number, e.g. "4000" — for a chart of accounts
 }
 
 export interface Vendor {
@@ -102,6 +104,7 @@ export interface Transaction {
   transferPairId?: ID; // links two transactions that form a transfer
   needsReview: boolean;
   ignored: boolean;
+  customFields?: Record<string, string>; // any additional source columns you chose to keep on import, keyed by original column name
   createdAt: string;
   updatedAt: string;
 }
@@ -174,6 +177,18 @@ export interface ColumnMapping {
   amount?: string;
   account?: string;
   externalId?: string;
+  // Optional extra columns some bank/card exports include. None of these are
+  // required — if left unmapped, the raw row is still preserved in full on
+  // the transaction's originalData, just not surfaced anywhere.
+  merchantHint?: string; // e.g. "Appears On Your Statement As" — a cleaner merchant name than the raw description
+  memo?: string; // e.g. "Extended Details" — free-text notes, invoice numbers, etc.
+  categoryHint?: string; // e.g. "Receipt"/"Category" — the bank's own category label; matched against your category names
+  extraColumns?: string[]; // any other columns to keep as-is, visible on the transaction under their original names
+  // Only relevant when a single signed `amount` column is used. Most bank
+  // checking/savings exports show withdrawals as negative ("negative-is-debit").
+  // Most credit card exports show charges as positive and payments/credits as
+  // negative ("positive-is-debit") — the opposite convention.
+  amountSignConvention?: "negative-is-debit" | "positive-is-debit";
 }
 
 export interface ImportBatch {

@@ -276,6 +276,19 @@ function EditTransactionModal({
           </Select>
         </div>
         <div><Label>Memo</Label><Input value={memo} onChange={(e) => setMemo(e.target.value)} /></div>
+        {txn.customFields && Object.keys(txn.customFields).length > 0 && (
+          <div>
+            <Label>Additional Data (from import)</Label>
+            <div className="max-h-40 overflow-y-auto rounded-md border border-slate-200 divide-y divide-slate-100">
+              {Object.entries(txn.customFields).map(([key, value]) => (
+                <div key={key} className="flex gap-2 px-2.5 py-1.5 text-xs">
+                  <span className="w-1/3 shrink-0 font-medium text-slate-500">{key}</span>
+                  <span className="min-w-0 whitespace-pre-wrap break-words text-slate-700">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div>
           <Label>Tax treatment note</Label>
           <Input value={taxTreatment} onChange={(e) => setTaxTreatment(e.target.value)} placeholder="e.g. 100% deductible, ask CPA, etc." />

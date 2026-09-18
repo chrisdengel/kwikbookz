@@ -88,6 +88,7 @@ export async function runImportPipeline(
 ): Promise<ImportResult> {
   const settings = await getSettings();
   const accounts = await getAll("accounts");
+  const categories = await getAll("categories");
   const existingForAccount = await getByIndex("transactions", "accountId", opts.accountId);
 
   const { toImport, duplicates } = dedupeBatch(
@@ -134,21 +135,42 @@ export async function runImportPipeline(
       // user-selected entity/account as-is; conflicts are surfaced separately.
     }
 
-    const vendor = await resolveVendor(row.description);
+    const vendor =
+      (row.merchantHint ? await resolveVendor(row.merchantHint) : null) ??
+      (await resolveVendor(row.description));
+
+    // A bank's own category label (e.g. Amex's "Maintenance/Repairs") gets
+    // matched against your existing category names as a starting suggestion.
+    // Word-set comparison (not just exact/stripped string match) so word
+    // order differences ("Maintenance/Repairs" vs "Repairs & Maintenance")
+    // still resolve. Rules run afterward and can still override this.
+    let categoryFromHint: string | undefined;
+    if (row.categoryHint) {
+      const hintWords = new Set(row.categoryHint.toLowerCase().split(/[^a-z]+/).filter(Boolean));
+      const match = categories.find((c) => {
+        const nameWords = new Set(c.name.toLowerCase().split(/[^a-z]+/).filter(Boolean));
+        if (nameWords.size === 0 || hintWords.size === 0) return false;
+        if (nameWords.size !== hintWords.size) return false;
+        for (const w of nameWords) if (!hintWords.has(w)) return false;
+        return true;
+      });
+      categoryFromHint = match?.id;
+    }
 
     let txn: Transaction = {
       id: uuid(),
       date: row.date,
       postedDate: row.postedDate,
       description: row.description,
-      normalizedMerchant: vendor?.displayName,
+      normalizedMerchant: vendor?.displayName ?? row.merchantHint,
       amount: row.amount,
       direction: row.direction,
       entityId,
       accountId,
       vendorId: vendor?.id,
-      categoryId: vendor?.defaultCategoryId,
+      categoryId: vendor?.defaultCategoryId ?? categoryFromHint,
       type: row.direction === "credit" ? "Income" : "Expense",
+      memo: row.memo,
       taxDocStatus: "Missing",
       documentIds: [],
       reconciliationStatus: "Unreconciled",
@@ -156,6 +178,7 @@ export async function runImportPipeline(
       source: "import",
       originalData: row.originalData,
       externalId: row.externalId,
+      customFields: row.extraFields,
       capexFlag: null,
       needsReview: false,
       ignored: false,

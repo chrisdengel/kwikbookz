@@ -3,16 +3,19 @@
 import * as React from "react";
 import { v4 as uuid } from "uuid";
 import { useAppData } from "@/components/AppDataContext";
-import { put, remove } from "@/lib/db";
+import { put, remove, getAll } from "@/lib/db";
 import type { Entity } from "@/lib/types";
 import { Card, CardContent, Input, Modal, Label, Badge } from "@/components/ui/primitives";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Archive, ArchiveRestore } from "lucide-react";
+import { PlusCircle, Archive, ArchiveRestore, Pencil, Trash2 } from "lucide-react";
 
 export default function EntitiesPage() {
   const { entities, accounts, refresh } = useAppData();
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
+  const [editing, setEditing] = React.useState<Entity | null>(null);
+  const [editName, setEditName] = React.useState("");
+  const [deleteBlocked, setDeleteBlocked] = React.useState<string | null>(null);
 
   async function addEntity() {
     if (!name.trim()) return;
@@ -25,6 +28,36 @@ export default function EntitiesPage() {
 
   async function toggleArchive(e: Entity) {
     await put("entities", { ...e, archived: !e.archived });
+    await refresh();
+  }
+
+  function startEdit(e: Entity) {
+    setEditing(e);
+    setEditName(e.name);
+    setDeleteBlocked(null);
+  }
+
+  async function saveEdit() {
+    if (!editing || !editName.trim()) return;
+    await put("entities", { ...editing, name: editName.trim() });
+    setEditing(null);
+    await refresh();
+  }
+
+  async function deleteEntity() {
+    if (!editing) return;
+    const acctCount = accounts.filter((a) => a.entityId === editing.id).length;
+    if (acctCount > 0) {
+      setDeleteBlocked(`This entity has ${acctCount} account(s) attached — remove or reassign those first.`);
+      return;
+    }
+    const txns = await getAll("transactions");
+    if (txns.some((t) => t.entityId === editing.id)) {
+      setDeleteBlocked("This entity has transactions on record — archive it instead of deleting, to keep your history intact.");
+      return;
+    }
+    await remove("entities", editing.id);
+    setEditing(null);
     await refresh();
   }
 
@@ -47,6 +80,7 @@ export default function EntitiesPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {e.archived && <Badge color="slate">Archived</Badge>}
+                  <Button size="sm" variant="ghost" onClick={() => startEdit(e)}><Pencil size={15} /></Button>
                   <Button size="sm" variant="ghost" onClick={() => toggleArchive(e)}>
                     {e.archived ? <ArchiveRestore size={15} /> : <Archive size={15} />}
                   </Button>
@@ -66,6 +100,22 @@ export default function EntitiesPage() {
           </div>
           <Button onClick={addEntity} className="w-full">Add</Button>
         </div>
+      </Modal>
+
+      <Modal open={!!editing} onClose={() => setEditing(null)} title="Edit Entity">
+        {editing && (
+          <div className="space-y-3">
+            <div>
+              <Label>Entity name</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
+            </div>
+            <Button onClick={saveEdit} className="w-full">Save</Button>
+            <div className="border-t border-slate-200 pt-3">
+              <Button variant="destructive" size="sm" onClick={deleteEntity}><Trash2 size={14} /> Delete Entity</Button>
+              {deleteBlocked && <div className="mt-2 text-xs text-amber-700">{deleteBlocked}</div>}
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

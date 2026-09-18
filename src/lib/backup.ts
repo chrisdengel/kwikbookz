@@ -180,6 +180,54 @@ export interface RestoreResult {
   counts?: Record<string, number>;
 }
 
+export interface PortableDatabaseJson {
+  entities?: Entity[];
+  accounts?: Account[];
+  categories?: Category[];
+  vendors?: Vendor[];
+  customers?: Customer[];
+  projects?: Project[];
+  rules?: Rule[];
+  reconciliationSessions?: ReconciliationSession[];
+  importBatches?: ImportBatch[];
+  audit?: AuditEntry[];
+  settings?: ReturnType<typeof getSettings> extends Promise<infer S> ? S : never;
+}
+
+/**
+ * The core restore step shared by both ZIP restore and GitHub Gist sync:
+ * everything except document blobs, which each caller handles its own way
+ * (ZIP has them as files; Gist sync deliberately excludes them — see
+ * github-gist.ts).
+ */
+export async function restoreFromDatabaseJson(
+  dbJson: PortableDatabaseJson,
+  transactions: Transaction[],
+  mode: "replace" | "merge" = "replace"
+): Promise<void> {
+  if (mode === "replace") {
+    await wipeDatabase();
+  }
+
+  await bulkPut("entities", dbJson.entities ?? []);
+  await bulkPut("accounts", dbJson.accounts ?? []);
+  await bulkPut("categories", dbJson.categories ?? []);
+  await bulkPut("vendors", dbJson.vendors ?? []);
+  await bulkPut("customers", dbJson.customers ?? []);
+  await bulkPut("projects", dbJson.projects ?? []);
+  await bulkPut("rules", dbJson.rules ?? []);
+  await bulkPut("reconciliationSessions", dbJson.reconciliationSessions ?? []);
+  await bulkPut("importBatches", dbJson.importBatches ?? []);
+  await bulkPut("audit", dbJson.audit ?? []);
+  await bulkPut("transactions", transactions);
+
+  if (dbJson.settings) {
+    await saveSettings(dbJson.settings);
+  } else {
+    await ensureSeedData();
+  }
+}
+
 export async function restoreBackupZip(file: File, mode: "replace" | "merge" = "replace"): Promise<RestoreResult> {
   try {
     const zip = await JSZip.loadAsync(file);
@@ -188,40 +236,15 @@ export async function restoreBackupZip(file: File, mode: "replace" | "merge" = "
     if (!dbFile) {
       return { ok: false, error: "This file doesn't look like a valid backup (missing database.json)." };
     }
-    const dbJson = JSON.parse(await dbFile.async("string")) as {
-      entities: Entity[];
-      accounts: Account[];
-      categories: Category[];
-      vendors: Vendor[];
-      customers: Customer[];
-      projects: Project[];
-      rules: Rule[];
-      reconciliationSessions: ReconciliationSession[];
-      importBatches: ImportBatch[];
-      audit: AuditEntry[];
-      settings: ReturnType<typeof getSettings> extends Promise<infer S> ? S : never;
-    };
+    const dbJson = JSON.parse(await dbFile.async("string")) as PortableDatabaseJson;
 
     const txnFile = root.file("transactions.json");
     const transactions: Transaction[] = txnFile ? JSON.parse(await txnFile.async("string")) : [];
 
-    if (mode === "replace") {
-      await wipeDatabase();
-    }
-
-    await bulkPut("entities", dbJson.entities ?? []);
-    await bulkPut("accounts", dbJson.accounts ?? []);
-    await bulkPut("categories", dbJson.categories ?? []);
-    await bulkPut("vendors", dbJson.vendors ?? []);
-    await bulkPut("customers", dbJson.customers ?? []);
-    await bulkPut("projects", dbJson.projects ?? []);
-    await bulkPut("rules", dbJson.rules ?? []);
-    await bulkPut("reconciliationSessions", dbJson.reconciliationSessions ?? []);
-    await bulkPut("importBatches", dbJson.importBatches ?? []);
-    await bulkPut("audit", dbJson.audit ?? []);
-    await bulkPut("transactions", transactions);
+    await restoreFromDatabaseJson(dbJson, transactions, mode);
 
     // Documents: rebuild blobs from the documents/ folder using the manifest.
+    // (Not part of restoreFromDatabaseJson since Gist sync has no blobs at all.)
     const docsFolder = root.folder("documents");
     let docCount = 0;
     if (docsFolder) {
@@ -243,12 +266,6 @@ export async function restoreBackupZip(file: File, mode: "replace" | "merge" = "
           docCount++;
         }
       }
-    }
-
-    if (dbJson.settings) {
-      await saveSettings(dbJson.settings);
-    } else {
-      await ensureSeedData();
     }
 
     return {

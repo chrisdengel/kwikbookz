@@ -7,7 +7,7 @@ import { put, remove, getAll } from "@/lib/db";
 import type { Category, Transaction } from "@/lib/types";
 import { Card, CardContent, Input, Select, Modal, Label, Badge } from "@/components/ui/primitives";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Trash2 } from "lucide-react";
+import { PlusCircle, Trash2, Pencil } from "lucide-react";
 
 const GROUPS: Category["group"][] = ["Income", "Operating Expenses", "Property/Equipment", "Financial", "Custom"];
 
@@ -16,7 +16,13 @@ export default function CategoriesPage() {
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [group, setGroup] = React.useState<Category["group"]>("Operating Expenses");
+  const [code, setCode] = React.useState("");
   const [inUseCount, setInUseCount] = React.useState<Record<string, number>>({});
+  const [editing, setEditing] = React.useState<Category | null>(null);
+  const [editName, setEditName] = React.useState("");
+  const [editGroup, setEditGroup] = React.useState<Category["group"]>("Operating Expenses");
+  const [editCode, setEditCode] = React.useState("");
+  const [deleteBlocked, setDeleteBlocked] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     getAll("transactions").then((txns: Transaction[]) => {
@@ -30,19 +36,36 @@ export default function CategoriesPage() {
 
   async function addCategory() {
     if (!name.trim()) return;
-    const category: Category = { id: uuid(), name: name.trim(), group, custom: true };
+    const category: Category = { id: uuid(), name: name.trim(), group, custom: true, code: code.trim() || undefined };
     await put("categories", category);
-    setName("");
+    setName(""); setCode("");
     setOpen(false);
     await refresh();
   }
 
-  async function deleteCategory(c: Category) {
-    if (inUseCount[c.id]) {
-      alert(`"${c.name}" is used on ${inUseCount[c.id]} transaction(s). Recategorize those first, or leave it — deleting isn't required.`);
+  function startEdit(c: Category) {
+    setEditing(c);
+    setEditName(c.name);
+    setEditGroup(c.group);
+    setEditCode(c.code ?? "");
+    setDeleteBlocked(null);
+  }
+
+  async function saveEdit() {
+    if (!editing || !editName.trim()) return;
+    await put("categories", { ...editing, name: editName.trim(), group: editGroup, code: editCode.trim() || undefined });
+    setEditing(null);
+    await refresh();
+  }
+
+  async function deleteCategory() {
+    if (!editing) return;
+    if (inUseCount[editing.id]) {
+      setDeleteBlocked(`"${editing.name}" is used on ${inUseCount[editing.id]} transaction(s). Recategorize those first.`);
       return;
     }
-    await remove("categories", c.id);
+    await remove("categories", editing.id);
+    setEditing(null);
     await refresh();
   }
 
@@ -58,6 +81,7 @@ export default function CategoriesPage() {
         can see it clearly on a P&amp;L. Once it exists here, you can assign it manually on a transaction,
         or set a rule at <a href="/rules" className="underline">Rules</a> (e.g. WHEN Description contains
         &quot;COUNTY TAX&quot; → Assign Category → Property Taxes) so future imports categorize it automatically.
+        Give it a GL code if you want it to line up with a formal chart of accounts.
       </div>
 
       {GROUPS.map((g) => {
@@ -71,11 +95,11 @@ export default function CategoriesPage() {
                 <Card key={c.id}>
                   <CardContent className="flex items-center justify-between pt-3 pb-3">
                     <div>
-                      <div className="text-sm font-medium">{c.name}</div>
+                      <div className="text-sm font-medium">{c.code ? `${c.code} — ` : ""}{c.name}</div>
                       {c.custom && <Badge color="blue">Custom</Badge>}
                     </div>
-                    <button className="text-slate-300 hover:text-red-600" onClick={() => deleteCategory(c)}>
-                      <Trash2 size={14} />
+                    <button className="text-slate-300 hover:text-slate-700" onClick={() => startEdit(c)}>
+                      <Pencil size={14} />
                     </button>
                   </CardContent>
                 </Card>
@@ -98,8 +122,38 @@ export default function CategoriesPage() {
             </Select>
             <div className="mt-1 text-xs text-slate-400">This just controls where it's grouped on reports — pick whichever makes your P&amp;L easiest to read.</div>
           </div>
+          <div>
+            <Label>GL code (optional)</Label>
+            <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. 5400" />
+          </div>
           <Button onClick={addCategory} className="w-full">Add Category</Button>
         </div>
+      </Modal>
+
+      <Modal open={!!editing} onClose={() => setEditing(null)} title="Edit Category">
+        {editing && (
+          <div className="space-y-3">
+            <div>
+              <Label>Category name</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
+            </div>
+            <div>
+              <Label>Group</Label>
+              <Select value={editGroup} onChange={(e) => setEditGroup(e.target.value as Category["group"])}>
+                {GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
+              </Select>
+            </div>
+            <div>
+              <Label>GL code (optional)</Label>
+              <Input value={editCode} onChange={(e) => setEditCode(e.target.value)} placeholder="e.g. 5400" />
+            </div>
+            <Button onClick={saveEdit} className="w-full">Save Changes</Button>
+            <div className="border-t border-slate-200 pt-3">
+              <Button variant="destructive" size="sm" onClick={deleteCategory}><Trash2 size={14} /> Delete Category</Button>
+              {deleteBlocked && <div className="mt-2 text-xs text-amber-700">{deleteBlocked}</div>}
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

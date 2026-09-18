@@ -116,7 +116,41 @@ export default function HelpPage() {
           </p>
           <p className="text-slate-500">
             Store backup ZIPs somewhere durable — cloud drive, external drive, wherever you&apos;d keep
-            any other important file. The app itself has no way to send a copy anywhere for you.
+            any other important file.
+          </p>
+
+          <h3 className="mt-5 mb-1 text-sm font-semibold text-slate-800">GitHub Gist Sync (optional)</h3>
+          <p>
+            If you&apos;d rather not manage ZIP files by hand, you can sync through a private GitHub
+            Gist instead. This is a lighter-weight alternative to backup ZIPs, not a replacement for
+            them — a gist can&apos;t hold your receipt/document files (gists are text-only), so it
+            syncs everything except attached documents.
+          </p>
+          <p>
+            To set it up, go to{" "}
+            <Link href="/settings" className="underline">Settings</Link> →{" "}
+            <strong>GitHub Gist Sync</strong>:
+          </p>
+          <ol className="list-decimal space-y-1 pl-5">
+            <li>
+              Create a GitHub <strong>personal access token</strong> with the <strong>gist</strong> scope
+              at{" "}
+              <a href="https://github.com/settings/tokens" target="_blank" rel="noreferrer" className="underline">
+                github.com/settings/tokens
+              </a>{" "}
+              — that&apos;s the only permission it needs.
+            </li>
+            <li>Paste that token into the token field on the Settings page. It&apos;s stored only in this browser and is never included in your backup ZIPs.</li>
+            <li>
+              Click <strong>Push to Gist</strong> to create a private gist with your current data (or
+              update it, once one exists), or <strong>Pull from Gist</strong> to bring data down from
+              the gist into this browser.
+            </li>
+          </ol>
+          <p className="text-slate-500">
+            Pulling replaces what&apos;s in this browser, the same as restoring a ZIP — the app will
+            ask you to confirm before it does. <strong>Disconnect</strong> just forgets the token and
+            gist ID on this device; it doesn&apos;t delete the gist itself.
           </p>
         </Section>
 

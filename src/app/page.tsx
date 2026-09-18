@@ -64,13 +64,13 @@ export default function DashboardPage() {
         <Link href="/help"><Button variant="ghost"><HelpCircle size={15} /> How to use this site</Button></Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-        <Card><CardHeader><CardTitle>Revenue (this month)</CardTitle></CardHeader><CardContent><div className="text-2xl font-semibold text-emerald-700">{formatCurrency(revenue)}</div></CardContent></Card>
-        <Card><CardHeader><CardTitle>Expenses (this month)</CardTitle></CardHeader><CardContent><div className="text-2xl font-semibold text-red-700">{formatCurrency(expenses)}</div></CardContent></Card>
-        <Card><CardHeader><CardTitle>Net Profit (this month)</CardTitle></CardHeader><CardContent><div className="text-2xl font-semibold">{formatCurrency(revenue - expenses)}</div></CardContent></Card>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3">
+        <Card><CardHeader><CardTitle>Revenue (this month)</CardTitle></CardHeader><CardContent><div className="truncate text-xl font-semibold text-emerald-700 sm:text-2xl">{formatCurrency(revenue)}</div></CardContent></Card>
+        <Card><CardHeader><CardTitle>Expenses (this month)</CardTitle></CardHeader><CardContent><div className="truncate text-xl font-semibold text-red-700 sm:text-2xl">{formatCurrency(expenses)}</div></CardContent></Card>
+        <Card><CardHeader><CardTitle>Net Profit (this month)</CardTitle></CardHeader><CardContent><div className="truncate text-xl font-semibold sm:text-2xl">{formatCurrency(revenue - expenses)}</div></CardContent></Card>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
         <ExceptionCard href="/transactions?filter=uncategorized" label="Uncategorized" count={uncategorized} />
         <ExceptionCard href="/transactions?filter=needsReview" label="Needs Review" count={needsReview} />
         <ExceptionCard href="/reconcile" label="Unreconciled" count={unreconciled} />
@@ -79,18 +79,18 @@ export default function DashboardPage() {
 
       <div>
         <h2 className="mb-2 text-sm font-medium text-slate-500">Account Balances</h2>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
           {scopedAccounts.filter((a) => a.active).map((a) => {
             const acctTxns = scopedTxns.filter((t) => t.accountId === a.id);
             const bal = accountBalance(a.openingBalance, acctTxns);
             return (
               <Card key={a.id}>
                 <CardContent className="pt-4">
-                  <div className="text-xs text-slate-400">{a.name}</div>
-                  <div className={`text-lg font-semibold ${bal < 0 ? "text-red-600" : "text-slate-900"}`}>
+                  <div className="truncate text-xs text-slate-400">{a.name}</div>
+                  <div className={`truncate text-base font-semibold sm:text-lg ${bal < 0 ? "text-red-600" : "text-slate-900"}`}>
                     {formatCurrency(bal)}
                   </div>
-                  <div className="text-xs text-slate-400">{a.type}{a.lastFour ? ` ••${a.lastFour}` : ""}</div>
+                  <div className="truncate text-xs text-slate-400">{a.type}{a.lastFour ? ` ••${a.lastFour}` : ""}</div>
                 </CardContent>
               </Card>
             );
@@ -110,23 +110,25 @@ export default function DashboardPage() {
             {recent.length === 0 ? (
               <div className="p-4 text-sm text-slate-400">No transactions yet.</div>
             ) : (
-              <table className="w-full text-sm">
-                <tbody>
-                  {recent.map((t) => (
-                    <tr key={t.id} className="border-b border-slate-100 last:border-0">
-                      <td className="px-4 py-2 text-slate-400">{formatDate(t.date)}</td>
-                      <td className="px-4 py-2">{t.description}</td>
-                      <td className="px-4 py-2">
-                        {!t.categoryId && <Badge color="amber">Uncategorized</Badge>}
-                      </td>
-                      <td className={`px-4 py-2 text-right font-medium ${t.direction === "credit" ? "text-emerald-700" : "text-slate-900"}`}>
-                        {t.direction === "credit" ? "+" : "-"}
-                        {formatCurrency(t.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[480px] text-sm">
+                  <tbody>
+                    {recent.map((t) => (
+                      <tr key={t.id} className="border-b border-slate-100 last:border-0">
+                        <td className="px-4 py-2 text-slate-400">{formatDate(t.date)}</td>
+                        <td className="px-4 py-2">{t.description}</td>
+                        <td className="px-4 py-2">
+                          {!t.categoryId && <Badge color="amber">Uncategorized</Badge>}
+                        </td>
+                        <td className={`px-4 py-2 text-right font-medium ${t.direction === "credit" ? "text-emerald-700" : "text-slate-900"}`}>
+                          {t.direction === "credit" ? "+" : "-"}
+                          {formatCurrency(t.amount)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -140,8 +142,8 @@ function ExceptionCard({ href, label, count, color }: { href: string; label: str
     <Link href={href}>
       <Card className="hover:border-slate-400 transition-colors">
         <CardContent className="pt-4">
-          <div className="text-xs text-slate-400">{label}</div>
-          <div className={`text-2xl font-semibold ${count > 0 ? (color === "amber" ? "text-amber-600" : "text-slate-900") : "text-slate-300"}`}>
+          <div className="truncate text-xs text-slate-400">{label}</div>
+          <div className={`text-xl font-semibold sm:text-2xl ${count > 0 ? (color === "amber" ? "text-amber-600" : "text-slate-900") : "text-slate-300"}`}>
             {count}
           </div>
         </CardContent>

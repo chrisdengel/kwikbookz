@@ -29,6 +29,8 @@ import {
   Search,
   DownloadCloud,
   UploadCloud,
+  Menu,
+  X,
 } from "lucide-react";
 
 const NAV = [
@@ -60,6 +62,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [showResults, setShowResults] = React.useState(false);
   const [backingUp, setBackingUp] = React.useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -98,19 +105,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900">
-      <aside className="flex w-56 shrink-0 flex-col border-r border-slate-200 bg-white">
+    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
+      {mobileNavOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={() => setMobileNavOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white transition-transform duration-200 ease-in-out md:static md:z-auto md:w-56 md:translate-x-0 ${
+          mobileNavOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         <div className="flex items-center gap-2 px-4 py-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand-mark.png" alt="KwikBookz" className="h-8 w-8 rounded-lg" />
-          <div>
+          <img src="/brand-mark.png" alt="KwikBookz" className="h-8 w-8 shrink-0 rounded-lg" />
+          <div className="min-w-0">
             <div className="text-lg font-semibold tracking-tight">
               Kwik<span className="text-emerald-600">Bookz</span>
             </div>
             <div className="text-[11px] text-slate-400">kwikbookz.com</div>
           </div>
+          <button
+            className="ml-auto rounded-md p-1.5 text-slate-400 hover:bg-slate-100 md:hidden"
+            onClick={() => setMobileNavOpen(false)}
+            aria-label="Close menu"
+          >
+            <X size={18} />
+          </button>
         </div>
-        <nav className="flex-1 space-y-0.5 px-2">
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-2">
           {NAV.map((item) => {
             const active = pathname === item.href.split("?")[0];
             const Icon = item.icon;
@@ -149,8 +175,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5">
-          <div className="w-56 shrink-0">
+        <header className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-3 py-2.5 sm:gap-3 sm:px-4">
+          <button
+            className="shrink-0 rounded-md p-1.5 text-slate-500 hover:bg-slate-100 md:hidden"
+            onClick={() => setMobileNavOpen(true)}
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+
+          <div className="w-32 shrink-0 sm:w-44 md:w-56">
             <Select
               value={activeEntityId}
               onChange={(e) => setActiveEntityId(e.target.value)}
@@ -165,7 +199,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Select>
           </div>
 
-          <div className="relative flex-1 max-w-md">
+          <div className="relative order-last w-full flex-1 basis-full sm:order-none sm:w-auto sm:basis-auto sm:max-w-md">
             <Search size={15} className="pointer-events-none absolute left-2.5 top-2.5 text-slate-400" />
             <input
               value={query}
@@ -175,7 +209,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               }}
               onFocus={() => setShowResults(true)}
               onBlur={() => setTimeout(() => setShowResults(false), 150)}
-              placeholder='Search — "Home Depot", "uncategorized", "$2,500+"…'
+              placeholder='Search — "Home Depot", "uncategorized"…'
               className="h-9 w-full rounded-md border border-slate-300 bg-white pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
             />
             {showResults && results.length > 0 && (
@@ -201,16 +235,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
-            <div className="text-right text-xs leading-tight">
+            <div className="hidden text-right text-xs leading-tight lg:block">
               <div className="text-slate-400">Last Backup</div>
               <div className={staleBackup ? "font-medium text-amber-600" : "text-slate-600"}>
                 {lastBackup ? formatDateTime(lastBackup) : "Never"}
               </div>
             </div>
             <Button size="sm" variant="outline" onClick={handleBackup} disabled={backingUp}>
-              <DownloadCloud size={14} /> {backingUp ? "Backing up…" : "Backup Now"}
+              <DownloadCloud size={14} /> <span className="hidden sm:inline">{backingUp ? "Backing up…" : "Backup Now"}</span>
             </Button>
-            <Link href="/settings?tab=restore">
+            <Link href="/settings?tab=restore" className="hidden sm:block">
               <Button size="sm" variant="ghost">
                 <UploadCloud size={14} /> Restore
               </Button>
@@ -226,7 +260,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         ) : null}
 
-        <main className="flex-1 overflow-y-auto p-5">{children}</main>
+        <main className="flex-1 overflow-y-auto p-3 sm:p-5">{children}</main>
       </div>
     </div>
   );

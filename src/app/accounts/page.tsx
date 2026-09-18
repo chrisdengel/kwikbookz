@@ -3,25 +3,76 @@
 import * as React from "react";
 import { v4 as uuid } from "uuid";
 import { useAppData } from "@/components/AppDataContext";
-import { getAll, put } from "@/lib/db";
+import { getAll, put, remove } from "@/lib/db";
 import type { Account, AccountType, Transaction } from "@/lib/types";
 import { Card, CardContent, Input, Select, Modal, Label, Badge } from "@/components/ui/primitives";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/format";
 import { accountBalance } from "@/lib/reports";
 import { findCardConflicts } from "@/lib/rules";
-import { PlusCircle, AlertTriangle } from "lucide-react";
+import { PlusCircle, AlertTriangle, Pencil, Trash2 } from "lucide-react";
 
 const ACCOUNT_TYPES: AccountType[] = [
   "Checking", "Savings", "Credit Card", "Cash", "Loan", "Investment", "Other Asset", "Other Liability",
 ];
+
+type AccountForm = Partial<Account>;
+
+function AccountFormFields({ form, setForm, entities }: {
+  form: AccountForm; setForm: (updater: (f: AccountForm) => AccountForm) => void;
+  entities: { id: string; name: string }[];
+}) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <Label>Entity</Label>
+        <Select value={form.entityId ?? ""} onChange={(e) => setForm((f) => ({ ...f, entityId: e.target.value }))}>
+          {entities.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+        </Select>
+      </div>
+      <div>
+        <Label>Account name</Label>
+        <Input value={form.name ?? ""} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Chase Visa" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label>Type</Label>
+          <Select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as AccountType }))}>
+            {ACCOUNT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+          </Select>
+        </div>
+        <div>
+          <Label>Last 4 digits</Label>
+          <Input value={form.lastFour ?? ""} onChange={(e) => setForm((f) => ({ ...f, lastFour: e.target.value }))} maxLength={4} placeholder="1234" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label>Institution</Label>
+          <Input value={form.institution ?? ""} onChange={(e) => setForm((f) => ({ ...f, institution: e.target.value }))} placeholder="Chase" />
+        </div>
+        <div>
+          <Label>Opening balance</Label>
+          <Input type="number" step="0.01" value={form.openingBalance ?? 0} onChange={(e) => setForm((f) => ({ ...f, openingBalance: Number(e.target.value) }))} />
+        </div>
+      </div>
+      <div>
+        <Label>GL account code (optional — for a chart of accounts)</Label>
+        <Input value={form.code ?? ""} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} placeholder="e.g. 1010" />
+      </div>
+    </div>
+  );
+}
 
 export default function AccountsPage() {
   const { entities, accounts, activeEntityId, refresh } = useAppData();
   const [txns, setTxns] = React.useState<Transaction[]>([]);
   const [open, setOpen] = React.useState(false);
   const [conflicts, setConflicts] = React.useState<Awaited<ReturnType<typeof findCardConflicts>>>([]);
-  const [form, setForm] = React.useState<Partial<Account>>({ type: "Checking", entityId: entities[0]?.id, openingBalance: 0, active: true });
+  const [form, setForm] = React.useState<AccountForm>({ type: "Checking", entityId: entities[0]?.id, openingBalance: 0, active: true });
+  const [editing, setEditing] = React.useState<Account | null>(null);
+  const [editForm, setEditForm] = React.useState<AccountForm>({});
+  const [deleteBlocked, setDeleteBlocked] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     getAll("transactions").then(setTxns);
@@ -43,6 +94,7 @@ export default function AccountsPage() {
       institution: form.institution,
       type: (form.type as AccountType) ?? "Checking",
       lastFour: form.lastFour?.trim() || undefined,
+      code: form.code?.trim() || undefined,
       openingBalance: Number(form.openingBalance) || 0,
       active: true,
       createdAt: new Date().toISOString(),
@@ -50,6 +102,47 @@ export default function AccountsPage() {
     await put("accounts", account);
     setOpen(false);
     setForm({ type: "Checking", entityId: entities[0]?.id, openingBalance: 0, active: true });
+    await refresh();
+  }
+
+  function startEdit(a: Account) {
+    setEditing(a);
+    setEditForm({ ...a });
+    setDeleteBlocked(null);
+  }
+
+  async function saveEdit() {
+    if (!editing || !editForm.name?.trim() || !editForm.entityId) return;
+    const updated: Account = {
+      ...editing,
+      entityId: editForm.entityId,
+      name: editForm.name.trim(),
+      institution: editForm.institution,
+      type: (editForm.type as AccountType) ?? editing.type,
+      lastFour: editForm.lastFour?.trim() || undefined,
+      code: editForm.code?.trim() || undefined,
+      openingBalance: Number(editForm.openingBalance) || 0,
+    };
+    await put("accounts", updated);
+    setEditing(null);
+    await refresh();
+  }
+
+  async function toggleActive() {
+    if (!editing) return;
+    await put("accounts", { ...editing, active: !editing.active });
+    setEditing(null);
+    await refresh();
+  }
+
+  async function deleteAccount() {
+    if (!editing) return;
+    if (txns.some((t) => t.accountId === editing.id)) {
+      setDeleteBlocked("This account has transactions on record — mark it inactive instead of deleting, to keep your history intact.");
+      return;
+    }
+    await remove("accounts", editing.id);
+    setEditing(null);
     await refresh();
   }
 
@@ -83,18 +176,22 @@ export default function AccountsPage() {
           const bal = accountBalance(a.openingBalance, acctTxns);
           const entity = entities.find((e) => e.id === a.entityId);
           return (
-            <Card key={a.id}>
+            <Card key={a.id} className={!a.active ? "opacity-60" : ""}>
               <CardContent className="pt-4">
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="font-medium">{a.name}</div>
                     <div className="text-xs text-slate-400">{entity?.name}</div>
                   </div>
-                  <Badge>{a.type}</Badge>
+                  <div className="flex items-center gap-1.5">
+                    {!a.active && <Badge color="slate">Inactive</Badge>}
+                    <Badge>{a.type}</Badge>
+                    <button className="text-slate-300 hover:text-slate-700" onClick={() => startEdit(a)}><Pencil size={14} /></button>
+                  </div>
                 </div>
                 <div className={`mt-2 text-xl font-semibold ${bal < 0 ? "text-red-600" : ""}`}>{formatCurrency(bal)}</div>
                 <div className="mt-1 text-xs text-slate-400">
-                  {a.institution ?? "—"} {a.lastFour ? `••${a.lastFour}` : ""}
+                  {a.institution ?? "—"} {a.lastFour ? `••${a.lastFour}` : ""} {a.code ? `· #${a.code}` : ""}
                 </div>
               </CardContent>
             </Card>
@@ -107,40 +204,23 @@ export default function AccountsPage() {
 
       <Modal open={open} onClose={() => setOpen(false)} title="Add Account">
         <div className="space-y-3">
-          <div>
-            <Label>Entity</Label>
-            <Select value={form.entityId} onChange={(e) => setForm((f) => ({ ...f, entityId: e.target.value }))}>
-              {entities.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-            </Select>
-          </div>
-          <div>
-            <Label>Account name</Label>
-            <Input value={form.name ?? ""} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Chase Visa" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Type</Label>
-              <Select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as AccountType }))}>
-                {ACCOUNT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </Select>
-            </div>
-            <div>
-              <Label>Last 4 digits</Label>
-              <Input value={form.lastFour ?? ""} onChange={(e) => setForm((f) => ({ ...f, lastFour: e.target.value }))} maxLength={4} placeholder="1234" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Institution</Label>
-              <Input value={form.institution ?? ""} onChange={(e) => setForm((f) => ({ ...f, institution: e.target.value }))} placeholder="Chase" />
-            </div>
-            <div>
-              <Label>Opening balance</Label>
-              <Input type="number" step="0.01" value={form.openingBalance ?? 0} onChange={(e) => setForm((f) => ({ ...f, openingBalance: Number(e.target.value) }))} />
-            </div>
-          </div>
+          <AccountFormFields form={form} setForm={setForm} entities={entities} />
           <Button onClick={saveAccount} className="w-full">Add Account</Button>
         </div>
+      </Modal>
+
+      <Modal open={!!editing} onClose={() => setEditing(null)} title="Edit Account">
+        {editing && (
+          <div className="space-y-3">
+            <AccountFormFields form={editForm} setForm={setEditForm} entities={entities} />
+            <Button onClick={saveEdit} className="w-full">Save Changes</Button>
+            <div className="flex items-center justify-between border-t border-slate-200 pt-3">
+              <Button variant="outline" size="sm" onClick={toggleActive}>{editing.active ? "Mark Inactive" : "Mark Active"}</Button>
+              <Button variant="destructive" size="sm" onClick={deleteAccount}><Trash2 size={14} /> Delete Account</Button>
+            </div>
+            {deleteBlocked && <div className="text-xs text-amber-700">{deleteBlocked}</div>}
+          </div>
+        )}
       </Modal>
     </div>
   );

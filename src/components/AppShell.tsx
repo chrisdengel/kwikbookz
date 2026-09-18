@@ -9,6 +9,7 @@ import { Button } from "./ui/button";
 import { globalSearch, type SearchResult } from "@/lib/search";
 import { downloadBackup } from "@/lib/backup";
 import { formatDateTime } from "@/lib/format";
+import { DevDisclaimerBanner } from "./DevDisclaimerBanner";
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -216,6 +217,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
         </header>
+
+        <DevDisclaimerBanner />
 
         {staleBackup && lastBackup === undefined ? null : staleBackup ? (
           <div className="border-b border-amber-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-800">

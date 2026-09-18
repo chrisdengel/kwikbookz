@@ -5,7 +5,7 @@ import { useAppData } from "@/components/AppDataContext";
 import { saveSettings } from "@/lib/seed";
 import { downloadBackup, restoreBackupZip } from "@/lib/backup";
 import { wipeDatabase } from "@/lib/db";
-import { getGistCredentials, saveGistToken, forgetGistSync, pushToGist, pullFromGist } from "@/lib/github-gist";
+import { getGistCredentials, saveGistToken, saveGistId, forgetGistSync, pushToGist, pullFromGist } from "@/lib/github-gist";
 import { Card, CardContent, Input, Label, Modal } from "@/components/ui/primitives";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/format";
@@ -25,6 +25,7 @@ export default function SettingsPage() {
 
   const [gistToken, setGistToken] = React.useState("");
   const [gistId, setGistId] = React.useState<string | null>(null);
+  const [gistIdInput, setGistIdInput] = React.useState("");
   const [gistLastSync, setGistLastSync] = React.useState<string | null>(null);
   const [gistBusy, setGistBusy] = React.useState<"push" | "pull" | null>(null);
   const [gistMsg, setGistMsg] = React.useState<{ text: string; ok: boolean } | null>(null);
@@ -34,6 +35,7 @@ export default function SettingsPage() {
     const creds = getGistCredentials();
     setGistToken(creds.token);
     setGistId(creds.gistId);
+    setGistIdInput(creds.gistId ?? "");
     setGistLastSync(creds.lastSyncAt);
   }, []);
 
@@ -42,14 +44,22 @@ export default function SettingsPage() {
     saveGistToken(token);
   }
 
+  function handleSaveGistId() {
+    saveGistId(gistIdInput);
+    setGistId(gistIdInput.trim() || null);
+    setGistMsg(null);
+  }
+
   async function handlePush() {
     setGistBusy("push");
     setGistMsg(null);
     const result = await pushToGist();
     if (result.ok) {
       setGistMsg({ text: `Pushed ${result.counts?.transactions ?? 0} transactions and everything else to your gist.`, ok: true });
-      setGistId(getGistCredentials().gistId);
-      setGistLastSync(getGistCredentials().lastSyncAt);
+      const creds = getGistCredentials();
+      setGistId(creds.gistId);
+      setGistIdInput(creds.gistId ?? "");
+      setGistLastSync(creds.lastSyncAt);
     } else {
       setGistMsg({ text: result.error ?? "Push failed.", ok: false });
     }
@@ -75,6 +85,7 @@ export default function SettingsPage() {
     forgetGistSync();
     setGistToken("");
     setGistId(null);
+    setGistIdInput("");
     setGistLastSync(null);
     setGistMsg(null);
   }
@@ -177,6 +188,13 @@ export default function SettingsPage() {
             <a href="https://github.com/settings/tokens" target="_blank" rel="noreferrer" className="underline">github.com/settings/tokens</a>.
             The token is stored only in this browser and is never included in your ZIP backups.
           </div>
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <strong>GitHub only shows you the token once</strong>, right when you create it — copy it
+            somewhere safe (a password manager, a note) before you leave that page. You&apos;ll need to
+            paste that exact same token into <strong>every device</strong> you want to sync — the Gist
+            ID alone isn&apos;t enough to authenticate. If you lose the token, generate a new one on
+            GitHub and re-paste it everywhere.
+          </div>
 
           <div>
             <Label>GitHub personal access token</Label>
@@ -189,13 +207,26 @@ export default function SettingsPage() {
             />
           </div>
 
-          <div className="text-xs text-slate-400">
-            {gistId ? (
-              <>Synced gist: <a href={`https://gist.github.com/${gistId}`} target="_blank" rel="noreferrer" className="underline">gist.github.com/{gistId}</a>. </>
-            ) : (
-              <>No gist yet — the first push will create one. </>
-            )}
-            Last sync: {gistLastSync ? formatDateTime(gistLastSync) : "Never"}
+          <div>
+            <Label>Gist ID</Label>
+            <div className="flex gap-2">
+              <Input
+                value={gistIdInput}
+                onChange={(e) => setGistIdInput(e.target.value)}
+                placeholder="auto-filled here after your first push"
+              />
+              <Button variant="outline" onClick={handleSaveGistId} disabled={gistIdInput.trim() === (gistId ?? "")}>
+                Save
+              </Button>
+            </div>
+            <div className="mt-1 text-xs text-slate-400">
+              {gistId ? (
+                <>Linked to <a href={`https://gist.github.com/${gistId}`} target="_blank" rel="noreferrer" className="underline">gist.github.com/{gistId}</a>. </>
+              ) : (
+                <>No gist yet. On your <strong>first device</strong>, leave this blank and click Push — it creates the gist and fills this in. On <strong>every other device</strong>, paste the same token above <em>and</em> copy this Gist ID here from the first device, click Save, then Pull. </>
+              )}
+              Last sync: {gistLastSync ? formatDateTime(gistLastSync) : "Never"}
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">

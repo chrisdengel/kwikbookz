@@ -61,6 +61,22 @@ function setGistId(id: string) {
   }
 }
 
+/**
+ * Manually link this browser to a gist created on another device. Without
+ * this, a second device (e.g. a phone) has no way to learn the Gist ID a
+ * first device generated on push, and Pull would stay permanently
+ * unavailable there.
+ */
+export function saveGistId(id: string): void {
+  try {
+    const trimmed = id.trim();
+    if (trimmed) localStorage.setItem(GIST_ID_KEY, trimmed);
+    else localStorage.removeItem(GIST_ID_KEY);
+  } catch {
+    // localStorage unavailable — nothing we can do here.
+  }
+}
+
 function setLastSync(iso: string) {
   try {
     localStorage.setItem(LAST_SYNC_KEY, iso);

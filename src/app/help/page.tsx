@@ -138,13 +138,28 @@ export default function HelpPage() {
               <a href="https://github.com/settings/tokens" target="_blank" rel="noreferrer" className="underline">
                 github.com/settings/tokens
               </a>{" "}
-              — that&apos;s the only permission it needs.
+              — that&apos;s the only permission it needs. <strong>GitHub shows you this token only once</strong>,
+              right after you create it — copy it somewhere safe (a password manager, a note) immediately,
+              since you&apos;ll need to paste this exact token into every device you sync, and there&apos;s
+              no way to view it again on GitHub&apos;s side if you lose it.
             </li>
-            <li>Paste that token into the token field on the Settings page. It&apos;s stored only in this browser and is never included in your backup ZIPs.</li>
             <li>
-              Click <strong>Push to Gist</strong> to create a private gist with your current data (or
-              update it, once one exists), or <strong>Pull from Gist</strong> to bring data down from
-              the gist into this browser.
+              <strong>On your first device</strong> (say, your computer): paste that token into the
+              token field on the Settings page, leave the <strong>Gist ID</strong> field blank, and
+              click <strong>Push to Gist</strong>. That creates a private gist and fills the Gist ID
+              field in automatically.
+            </li>
+            <li>
+              <strong>On every other device</strong> (your phone, say): paste the <em>same</em> token,
+              then copy the Gist ID shown on your first device and paste it into the Gist ID field
+              there too, click <strong>Save</strong>, then click <strong>Pull from Gist</strong>. Without
+              that Gist ID, a new device has no way to find your existing gist and Pull stays
+              unavailable.
+            </li>
+            <li>
+              After that, use <strong>Push</strong> on whichever device you just made changes on, and{" "}
+              <strong>Pull</strong> on any other device to catch up — sync isn&apos;t automatic between
+              devices, so you push from where you worked and pull everywhere else.
             </li>
           </ol>
           <p className="text-slate-500">
